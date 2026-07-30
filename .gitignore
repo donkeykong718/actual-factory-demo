@@ -20,3 +20,7 @@
 
 # Scratch review / experiment directories
 .tmp/
+
+# Review artifacts written by agent gates. Never publish these from a public repo.
+.reviewer/
+.architect/

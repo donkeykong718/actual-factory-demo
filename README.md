@@ -40,8 +40,8 @@ You almost certainly have the first two already. Check the rest before the sessi
 
 Gas City runs every agent inside a `tmux` session, so it's genuinely required rather than merely recommended. Whether you have to install it yourself depends on how you install Gas City:
 
-- **Homebrew** (`brew install gastownhall/gascity/gascity`) declares `tmux`, `jq`, and `beads` as dependencies, so all three arrive automatically. Nothing more to do.
-- **Building from source, or grabbing a release binary,** installs only the `gc` binary. Install the rest yourself: `brew install tmux jq` on macOS, `apt install tmux jq` on Linux.
+- **Homebrew** (`brew install gastownhall/gascity/gascity`) declares `tmux`, `jq`, and `beads` as dependencies, plus `flock` on macOS, so they all arrive automatically. Nothing more to do.
+- **Building from source, or grabbing a release binary,** installs only the `gc` binary. Install the rest yourself: `brew install tmux jq flock` on macOS, `apt install tmux jq` on Linux, where `flock` already ships with util-linux.
 
 Homebrew is the recommended path for exactly this reason. Whichever route you took, confirm it with `gc doctor`, which checks each binary dependency and names the ones it can't find.
 
