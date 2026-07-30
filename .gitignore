@@ -1,0 +1,22 @@
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/
+
+# Claude Code local settings. Pack overlays may intentionally contain
+# overlay/.claude/settings.json and should be tracked.
+.claude/
+!.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
+!**/overlay/.claude/
+!**/overlay/.claude/**
+.vscode/settings.json
+
+# macOS editor/swap tempfiles (e.g. .!PID!filename)
+.!*!*
+
+# Scratch review / experiment directories
+.tmp/
