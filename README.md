@@ -1,98 +1,185 @@
 # Actual Factory Demo
 
-Build a working software factory in about fifteen minutes, then watch four agents take a task from a queue to a merged pull request without you touching the code.
+Build a working software factory on Claude Code in ~15 minutes with Gas City, then watch five agents carry a task from a queue to an open pull request fully autonomously.
 
-This repo is the hands-on companion to a short Claude Code workshop talk, so it's deliberately small. Want the full multi-day curriculum instead? That lives in [`actual-software/sf-tutorial`](https://github.com/actual-software/sf-tutorial), and every page here points back at it.
+## Table of contents
 
-## What you build
+- [Software Factory Overview](#software-factory-overview)
+- [Walkthrough](#walkthrough)
+  - [1. Prerequisites](#1-prerequisites)
+  - [2. Fork this repo](#2-fork-this-repo)
+  - [3. Create the factory](#3-create-the-factory)
+  - [4. Install the pack](#4-install-the-pack)
+  - [5. Seed the task queue](#5-seed-the-task-queue)
+  - [6. Run a task](#6-run-a-task)
+- [Join our Software Factory Intensive for more!](#join-our-software-factory-intensive-for-more)
 
-A [Gas City](https://github.com/gastownhall/gascity) factory named `factory1`, wired to this repo as its **rig**, which is the project the factory works on. You hand the factory a task. Four agents then pass it between themselves until the result lands as a pull request:
+## Software Factory Overview
+
+This tutorial uses the [Gas City](https://github.com/gastownhall/gascity) framework to build a complete software factory layer on top of Claude Code. This repo acts as the workspace, or **rig**, that the factory works on. You hand the factory a task, and five agents pass it between themselves until the result lands as a pull request you may review.
 
 ```mermaid
 flowchart LR
-    Q["Task queue<br/>(beads)"] --> M["mayor<br/>dispatches"]
-    M --> P["polecat<br/>writes the code"]
-    P --> R["refinery<br/>reviews + approves"]
-    R --> PR["Pull request<br/>on this repo"]
+    Q["Task queue<br/>(beads)"] --> P["planner<br/>writes acceptance"]
+    P --> B["builder<br/>writes the file"]
+    B --> A["architect<br/>gate 1: ADRs"]
+    A --> R["reviewer<br/>gate 2: acceptance"]
+    R --> M["manager<br/>reports + closes"]
+    M --> PR["Pull request<br/>on your fork"]
     PR -.->|you merge| Main["main"]
-    R -.->|rejected| M
-    D["dog<br/>housekeeping"] -.-> Q
+    A -.->|violations| B
+    R -.->|needs changes| B
 ```
 
-The work itself is intentionally trivial: generate ASCII art for a letter, with a rhyming couplet underneath. Nobody's here for the ASCII art. The point is the loop around it, meaning how work gets dispatched, who reviews it, and where the quality gate sits.
+The work itself is simply to produce ASCII art for a letter, with a rhyming couplet underneath each. The focus, though, is on understanding how work gets dispatched, who reviews it, and where the quality gates sit.
 
-## Prerequisites
+## Walkthrough
 
-You almost certainly have the first two already. Check the rest before the session starts, because installing things during a fifteen-minute talk doesn't go well.
+### 1. Prerequisites
 
 | Tool | Why | Install |
 | --- | --- | --- |
-| [Claude Code](https://claude.com/claude-code) | The coding agent the factory drives | See the Claude Code docs |
+| [Claude Code](https://claude.com/claude-code) | The coding agent the factory drives | See Claude Code docs |
 | [`gh`](https://cli.github.com/) | Agents open pull requests through it | `brew install gh`, then `gh auth login` |
 | [`gc`](https://github.com/gastownhall/gascity) 1.3+ | Gas City itself | `brew install gastownhall/gascity/gascity` |
-| [`bd`](https://github.com/gastownhall/beads) 1.0+ | The task queue the agents read | Arrives with the Homebrew install above |
 | [`dolt`](https://github.com/dolthub/dolt) 2.1+ | Storage behind `bd` | `brew install dolt` |
-| `tmux`, `jq`, `git` | Session backend, JSON parsing, version control | See the note below |
 
-**Claude Code is the one paid dependency, and it's the only one.** No other account, subscription, or API key is required.
+**Claude Code is the only paid prerequisite. All other components are fully open-source.**
 
-### About `tmux`
+### 2. Fork this repo
 
-Gas City runs every agent inside a `tmux` session, so it's genuinely required rather than merely recommended. Whether you have to install it yourself depends on how you install Gas City:
-
-- **Homebrew** (`brew install gastownhall/gascity/gascity`) declares `tmux`, `jq`, and `beads` as dependencies, plus `flock` on macOS, so they all arrive automatically. Nothing more to do.
-- **Building from source, or grabbing a release binary,** installs only the `gc` binary. Install the rest yourself: `brew install tmux jq flock` on macOS, `apt install tmux jq` on Linux, where `flock` already ships with util-linux.
-
-Homebrew is the recommended path for exactly this reason. Whichever route you took, confirm it with `gc doctor`, which checks each binary dependency and names the ones it can't find.
-
-## Before you start: fork this repo
-
-**This repo is also the rig.** Your factory writes its output back into a checkout of this same repository, so you don't create a second project repo. You do need somewhere you can push, though. Fork it first:
+**This repo is also the rig.** Your factory writes its output back into a checkout of this same repository. You do need somewhere you can push, though:
 
 ```bash
+mkdir -p ~/factory-demo && cd ~/factory-demo
 gh repo fork actual-software/actual-factory-demo --clone --remote
 ```
 
-Every command in the walkthrough assumes you're working in your fork.
+The city and the rig live side by side. By the end of step 3 the directory looks like this:
 
-## The walkthrough
-
-Four steps, in order. Each page is copy-paste runnable and ends with a verification block, so you can tell whether a step actually worked before building the next one on top of it.
-
-1. [Install Gas City](./walkthrough/1-install-gas-city.md) — create `factory1`, start the supervisor, meet the mayor
-2. [Install the pack](./walkthrough/2-install-the-pack.md) — register this repo as the rig, add the four-agent workflow, seed the task queue
-3. [Run the ASCII art task](./walkthrough/3-run-the-ascii-art-task.md) — hand a task to the factory and watch a pull request appear
-4. [Walk the configs](./walkthrough/4-walk-the-configs.md) — open the files that made all of that happen
-
-There's also a [bootstrap script](./bootstrap/README.md) that fast-forwards a factory to the end state of any step. Use it to reset between runs, or to catch up when a step goes sideways.
-
-## Skipping the slow parts
-
-Step 3 takes a few minutes of real agent time. That's fine when you're working through this alone. It's awkward when a room is watching.
-
-The **[`ascii-art-complete`](https://github.com/actual-software/actual-factory-demo/tree/ascii-art-complete)** branch holds the finished output: the `ascii/` files a factory run produces, already committed. [Pull request #1](https://github.com/actual-software/actual-factory-demo/pull/1) shows that branch as a diff against `main`, which is roughly what your own factory's pull request will look like when it opens.
-
-```bash
-git checkout ascii-art-complete
-ls ascii/
+```text
+~/factory-demo/
+├── factory1/              # the Gas City, created next
+└── actual-factory-demo/   # your fork, which is also the rig
 ```
 
-Use it to skip ahead, to check your own output against a known-good result, or just to see where you're heading before you start.
+### 3. Create the factory
 
-## Going deeper
+```bash
+cd ~/factory-demo
+gc init factory1
+```
 
-This demo stops as soon as one task has made it through the loop. [`sf-tutorial`](https://github.com/actual-software/sf-tutorial) picks up from that same place and keeps layering: a required feedback round before any task becomes a pull request, branch protection so only humans merge to `main`, an architecture-aware reviewer that reads your ADRs, and a review gate on the tasks themselves.
+`gc init` is interactive and asks two questions:
 
-Its `progression/02-first-review-loop.md` is the direct next step after step 3 here.
+- Config template: **minimal** (option `2`)
+- Provider: **Claude Code**
 
-## Troubleshooting
+That writes `factory1/`, holding a `city.toml` and a `pack.toml`.
 
-- [`tmux` scroll behavior](./troubleshooting/tmux.md) — the scroll wheel walking your shell history instead of scrolling
-- [CLI coding agents](./troubleshooting/cli-coding-agents.md) — provider setup and authentication problems
-- [`gc import add`](./troubleshooting/gc-import-add.md) — packs that don't show up after an import
+Now start it:
 
-Each walkthrough page also carries its own troubleshooting section for the failures specific to that step. Start there.
+```bash
+gc start
+```
 
-## Community
+`gc start` registers the city with the supervisor, installs the background service if this is your first city, and brings up the city's Dolt server along with its agents.
 
-Questions, or want to show off what you built? Join the [Actual AI User Community Slack](https://join.slack.com/t/actualaiusercommunity/shared_invite/zt-3vibgzapf-ywx0Db29mZ4lhtQJGzZfGQ).
+**Check:**
+
+```bash
+gc cities       # factory1, with its absolute path
+gc status       # Controller: supervisor-managed (PID ...)
+gc doctor       # ✓ pass, ⚠ warning, ✗ error
+```
+
+`gc doctor --fix` clears the routine warnings a fresh city reports. Run `gc doctor` again afterwards and you should be down to passes.
+
+### 4. Install the pack
+
+A **pack** is how Gas City ships agents, formulas, and config as one installable unit. The one for this demo lives in `factory/`.
+
+Register your fork as the rig, then import the pack into it:
+
+```bash
+cd "$FACTORY_PATH"
+export RIG_PATH="$(cd ../actual-factory-demo && pwd)"
+
+gc rig add "$RIG_PATH" --name ascii-art
+gc import add --rig ascii-art "$RIG_PATH/factory"
+gc restart
+```
+
+The rig is named `ascii-art` because that's the work it holds.
+
+The `--rig ascii-art` binds the five agents to the rig, which is what puts them in your fork's checkout when they run. Import without it and the agents come up at city scope, where there's no repo to write to.
+
+**Check:**
+
+```bash
+gc import list --rig ascii-art   # factory, with a locked commit
+gc formula list --rig ascii-art  # ascii-art, alongside the built-ins
+gc status                        # five ascii-art/factory.* agents
+```
+
+### 5. Seed the task queue
+
+The agents read work from **beads**, which is a task queue backed by Dolt. Yours is empty right now. The seed script opens two epics and twenty-six tasks, one per letter:
+
+```bash
+cd "$RIG_PATH"
+./seed.sh
+```
+
+**Check:**
+
+```bash
+bd list --type=epic   # Letters a–m and Letters n–z
+bd ready              # twenty-six tasks with no blockers
+```
+
+### 6. Run a task
+
+Pick a letter, and grab its bead id:
+
+```bash
+cd "$RIG_PATH"
+export BEAD_ID=$(bd list --type=task --status=open --limit 0 | grep -E "Implement a\.md$" | awk '{print $2}')
+bd show "$BEAD_ID"
+```
+
+Hand it to the factory:
+
+```bash
+cd "$FACTORY_PATH"
+gc sling ascii-art/factory.planner "$BEAD_ID" --on ascii-art
+```
+
+The breakdown of the command is as follows:
+
+- `ascii-art/factory.planner` names the target as `<rig>/<pack>.<agent>`
+- `$BEAD_ID` is the task
+- `--on ascii-art` attaches the formula, which is what tells every agent downstream what runs after it
+
+To watch the agents work, simply find a session you'd like to watch and attach to it like so:
+
+```bash
+gc session list
+gc session attach <session-name>
+```
+
+**Note: detach with `Ctrl+b` then `d`.** Never `Ctrl+c`. That one kills the session outright, and you may need to restart the agent or city to resume work.
+
+Once the factory is finished, you will see a PR on the other side that you can inspect and merge:
+
+```bash
+cd "$RIG_PATH"
+gh pr view "$(bd show "$BEAD_ID" --json | jq -r '.[0].metadata.pr_url')" --web
+gh pr merge <number> --merge
+```
+
+You should see one new file at `ascii/a.md`, holding an H1 with the letter, a fenced code block with the art in it, and a two-line rhyme. Those constraints aren't arbitrary. They come from [ADR 0001](./adrs/0001.ADR.ASCII.md), which the agents read as part of their context. You can also run another if you like. Same loop, `b.md` instead of `a.md`.
+
+## Join our Software Factory Intensive for more!
+
+This is a small sample of what is covered in the [Software Factory Intensive](https://www.actual.ai/softwarefactory) hosted by [Actual AI](https://www.actual.ai/) and the team behind [Gas City](https://github.com/gastownhall/gascity). The intensive covers a wide range of software factory principles, from multi-agent workflows to review gates to self-improvement loops. Have other questions, or want to show off what you built? Join the [Actual AI User Community Slack](https://join.slack.com/t/actualaiusercommunity/shared_invite/zt-3vibgzapf-ywx0Db29mZ4lhtQJGzZfGQ).
